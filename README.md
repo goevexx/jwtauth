@@ -14,7 +14,7 @@ auth.jwt.anonymous = "/token, /freepass/.*"  				// Valid regexp allowed for pat
 
 ### Enabling Auth Module
 
-Add `module.jwtauth = github.com/jeevatkm/jwtauth` into `conf/app.conf`
+Add `module.jwtauth = github.com/goevexx/jwtauth` into `conf/app.conf`
 
 ### Registering Auth Routes
 
