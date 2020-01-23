@@ -254,17 +254,12 @@ func loadPrivateKey(keyPath string) *rsa.PrivateKey {
 func loadPublicKey(keyPath string) *rsa.PublicKey {
 	keyData := readKeyFile(keyPath)
 
-	publicKeyImported, err := x509.ParsePKIXPublicKey(keyData.Bytes)
+	publicKeyImported, err := x509.ParsePKCS1PublicKey(keyData.Bytes)
 	if err != nil {
 		revel.AppLog.Fatalf("Public key import error [%v]", keyPath)
 	}
 
-	rsaPublicKey, ok := publicKeyImported.(*rsa.PublicKey)
-	if !ok {
-		revel.AppLog.Fatalf("Public key assert error [%v]", keyPath)
-	}
-
-	return rsaPublicKey
+	return publicKeyImported
 }
 
 func readKeyFile(keyPath string) *pem.Block {
