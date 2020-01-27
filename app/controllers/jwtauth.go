@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/goevexx/jwtauth/app/jwt"
-	"github.com/goevexx/jwtauth/app/models"
+	jwt "gitlab.com/goevexx/jwtauth/app"
+	"gitlab.com/goevexx/jwtauth/app/models"
 
 	"github.com/revel/revel"
 	"github.com/revel/revel/cache"
@@ -56,7 +56,7 @@ func (c *JwtAuth) Token() revel.Result {
 // RefreshToken generates a new token based on the old one
 func (c *JwtAuth) RefreshToken() revel.Result {
 	claims := c.Args[jwt.TokenClaimsKey].(map[string]interface{})
-	revel.AppLog.Fatalf("Claims: %q", claims)
+	revel.AppLog.Infof("Claims: %q", claims)
 
 	tokenString, err := jwt.GenerateToken(claims[jwt.SubjectKey].(string))
 	if err != nil {
