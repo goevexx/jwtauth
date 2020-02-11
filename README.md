@@ -48,7 +48,7 @@ revel.OnAppStart(func() {
 	jwt.Init(&MyAuth{})
 	//          OR
 	jwt.Init(jwt.AuthHandlerFunc(func(username, password string) (string, bool) {
-		revel.INFO.Printf("Username: %v, Password: %v", username, password)
+		revel.AppLog.Infof("Username: %v, Password: %v", username, password)
 		return "This is my subject value from function", true
 	}))
 })
