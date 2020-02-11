@@ -21,7 +21,7 @@ type JwtAuth struct {
 func (c *JwtAuth) Token() revel.Result {
 	user, err := c.parseUserInfo()
 	if err != nil {
-		revel.AppLog.Error("Unable to read user info %q", err)
+		revel.AppLog.Errorf("Unable to read user info %q", err)
 		c.Response.Status = http.StatusBadRequest
 		return c.RenderJSON(map[string]string{
 			"id":      "bad_request",

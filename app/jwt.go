@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/revel/revel/logger"
+
 	"github.com/revel/revel"
 	"github.com/revel/revel/cache"
 	"gopkg.in/dgrijalva/jwt-go.v2"
@@ -58,7 +60,14 @@ var (
 	isIssuerExists bool
 	handler        AuthHandler
 	anonymousPaths *regexp.Regexp
+	jwtLog         logger.MultiLogger
 )
+
+func init() {
+	revel.RegisterModuleInit(func(m *revel.Module) {
+		jwtLog = m.Log
+	})
+}
 
 // Init initializes JWT auth provider based on given config values from app.conf
 /*auth.jwt.realm.name = "REVEL-JWT-AUTH"
@@ -76,16 +85,16 @@ func Init(authHandler interface{}) {
 
 	privateKeyPath, found := revel.Config.String("auth.jwt.key.private")
 	if !found {
-		revel.AppLog.Fatal("No auth.jwt.key.private found.")
+		jwtLog.Fatal("No auth.jwt.key.private found.")
 	}
 
 	publicKeyPath, found := revel.Config.String("auth.jwt.key.public")
 	if !found {
-		revel.AppLog.Fatal("No auth.jwt.key.public found.")
+		jwtLog.Fatal("No auth.jwt.key.public found.")
 	}
 
 	if _, ok := authHandler.(AuthHandler); !ok {
-		revel.AppLog.Fatal("Auth Handler doesn't implement interface jwt.AuthenticationHandler")
+		jwtLog.Fatal("Auth Handler doesn't implement interface jwt.AuthenticationHandler")
 	}
 
 	Realm = fmt.Sprintf(`Bearer realm="%s"`, Realm)
@@ -118,7 +127,7 @@ func GenerateToken(subject string) (string, error) {
 
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
-		revel.AppLog.Warn("Generate token error [%v]", err)
+		jwtLog.Warnf("Generate token error [%v]", err)
 		return "", err
 	}
 
@@ -177,7 +186,7 @@ func IsInBlocklist(token string) bool {
 	cache.Get(token, &existingToken)
 
 	if len(existingToken) > 0 {
-		revel.AppLog.Warn("Yes, blocklisted token [%v]", existingToken)
+		jwtLog.Warnf("Yes, blocklisted token [%v]", existingToken)
 		return true
 	}
 
@@ -204,7 +213,7 @@ func AuthFilter(c *revel.Controller, fc []revel.Filter) {
 	var req *http.Request
 	var ok bool
 	if req, ok = c.Request.In.GetRaw().(*http.Request); !ok {
-		revel.AppLog.Fatal("That's not even a request")
+		jwtLog.Fatal("That's not even a request")
 	}
 	if !anonymousPaths.MatchString(c.Request.URL.Path) {
 		token, err := ParseFromRequest(req)
@@ -215,14 +224,14 @@ func AuthFilter(c *revel.Controller, fc []revel.Filter) {
 		} else {
 			if ve, ok := err.(*jwt.ValidationError); ok {
 				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-					revel.AppLog.Warn("That's not even a token")
+					jwtLog.Warn("That's not even a token")
 				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
-					revel.AppLog.Warn("Timing is everything, Token is either expired or not active yet")
+					jwtLog.Warn("Timing is everything, Token is either expired or not active yet")
 				} else {
-					revel.AppLog.Warn("Couldn't handle this token: %v", err)
+					jwtLog.Warnf("Couldn't handle this token: %v", err)
 				}
 			} else {
-				revel.AppLog.Warn("Couldn't handle this token: %v", err)
+				jwtLog.Warnf("Couldn't handle this token: %v", err)
 			}
 
 			c.Response.Status = http.StatusUnauthorized
@@ -245,7 +254,7 @@ func loadPrivateKey(keyPath string) *rsa.PrivateKey {
 
 	privateKeyImported, err := x509.ParsePKCS1PrivateKey(keyData.Bytes)
 	if err != nil {
-		revel.AppLog.Fatalf("Private key import error [%v]", keyPath)
+		jwtLog.Fatalf("Private key import error [%v]", keyPath)
 	}
 
 	return privateKeyImported
@@ -256,7 +265,7 @@ func loadPublicKey(keyPath string) *rsa.PublicKey {
 
 	publicKeyImported, err := x509.ParsePKCS1PublicKey(keyData.Bytes)
 	if err != nil {
-		revel.AppLog.Fatalf("Public key import error [%v]", keyPath)
+		jwtLog.Fatalf("Public key import error [%v]", keyPath)
 	}
 
 	return publicKeyImported
@@ -266,7 +275,7 @@ func readKeyFile(keyPath string) *pem.Block {
 	keyFile, err := os.Open(keyPath)
 	defer keyFile.Close()
 	if err != nil {
-		revel.AppLog.Fatalf("Key file open error [%v]", keyPath)
+		jwtLog.Fatalf("Key file open error [%v]", keyPath)
 	}
 
 	pemFileInfo, _ := keyFile.Stat()
@@ -276,7 +285,7 @@ func readKeyFile(keyPath string) *pem.Block {
 	buffer := bufio.NewReader(keyFile)
 	_, err = buffer.Read(pemBytes)
 	if err != nil {
-		revel.AppLog.Fatalf("Key file read error [%v]", keyPath)
+		jwtLog.Fatalf("Key file read error [%v]", keyPath)
 	}
 
 	keyData, _ := pem.Decode([]byte(pemBytes))
